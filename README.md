@@ -3,7 +3,7 @@ Pytorch model to Caffe &amp; [ncnn](https://github.com/Tencent/ncnn)
 
 ## Model Examples
   - SqueezeNet from torchvision
-  - [ResNet50] (to be loaded) (with ceiling_mode=True)
+  - [ResNet50](https://drive.google.com/file/d/0B5B31rlbCRZfcS1rY3BtVWhDREk/view?usp=sharing) (with ceiling_mode=True)
   - AnimeGAN pretrained model from author (https://github.com/jayleicn/animeGAN)
   - UNet (no pretrained model yet, just default initialization)
         
