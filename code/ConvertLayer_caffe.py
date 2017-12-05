@@ -213,10 +213,14 @@ def CopyPoolingParameter(pytorch_layer, layer):
         return
 
     if pytorch_layer.ceil_mode is False:
-        if dH > 1 and padH > 0:
-            layer.pooling_param.pad_h = padH - 1
-        if dW > 1 and padW > 0:
-            layer.pooling_param.pad_w = padW - 1
+        if padH == padW:
+            if dH > 1 and padH > 0:
+                layer.pooling_param.pad = padH - 1
+        else:
+            if dH > 1 and padH > 0:
+                layer.pooling_param.pad_h = padH - 1
+            if dW > 1 and padW > 0:
+                layer.pooling_param.pad_w = padW - 1
 
 
 def MaxPooling(pytorch_layer):
@@ -301,6 +305,13 @@ def eltwise(pytorch_layer):
     return layer
 
 
+def eltwise_max(pytorch_layer):
+    layer = pb2.LayerParameter()
+    layer.type = "Eltwise"
+    layer.eltwise_param.operation = 2
+    return layer
+
+
 def batchnorm(pytorch_layer):
     layer_bn = pb2.LayerParameter()
     layer_bn.type = "BatchNorm"
@@ -338,6 +349,7 @@ def build_converter(opts):
         'MaxPool2d': MaxPooling,
         'AvgPool2d': AvgPooling,
         'Add': eltwise,
+        'Cmax': eltwise_max,
         'BatchNorm': batchnorm,
         'Concat': concat,
         'Dropout': dropout,

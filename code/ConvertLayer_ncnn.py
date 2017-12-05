@@ -70,7 +70,7 @@ def Slice(pytorch_layer):
         prev_offset = 0
         for p in pytorch_layer.slice_point:
             offset = p
-            layer.param.append('%d' % offset - prev_offset)
+            layer.param.append('%d' % (offset - prev_offset))
             prev_offset = offset
         layer.param.append('%d' % -233)
 
@@ -335,6 +335,15 @@ def eltwise(pytorch_layer):
     return layer
 
 
+def eltwise_max(pytorch_layer):
+    layer = LayerParameter_ncnn()
+    layer.type = 'Eltwise'
+    """ operation: 0=mul 1=add  """
+    layer.param.append('%d' % 2)
+    """  TODO: coefficient  """
+    return layer
+
+
 def batchnorm(pytorch_layer):
     layer_bn = LayerParameter_ncnn()
     layer_bn.type = 'BatchNorm'
@@ -378,6 +387,7 @@ def build_converter(opts):
         'MaxPool2d': MaxPooling,
         'AvgPool2d': AvgPooling,
         'Add': eltwise,
+        'Cmax': eltwise_max,
         'BatchNorm': batchnorm,
         'Concat': concat,
         'Dropout': dropout,

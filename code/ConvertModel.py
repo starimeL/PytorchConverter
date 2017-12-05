@@ -155,7 +155,7 @@ def DFS(func):
 
     elif layer_type_name not in ['View', 'Clone', 'SetItem']:
             """ Debug """
-            # if layer_type_name != 'SetItem':
+            # if layer_type_name != 'Cmax':
             #     return tops_dict[func]
 
             layer = convert('', layer_type_name, func)
