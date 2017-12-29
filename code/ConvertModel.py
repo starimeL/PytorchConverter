@@ -106,7 +106,7 @@ def DFS(func):
 
     """  Skip some pytorch layers  """
     if dst == 'caffe':
-        if layer_type_name in ['View', 'Clone', 'Threshold', 'BatchNorm', 'Dropout', 'SetItem']:
+        if layer_type_name in ['View', 'Clone', 'Threshold', 'Dropout', 'SetItem']:
             tops_dict[func] = bottoms[0]
         elif (layer_type_name == 'Index') and (not isinstance(func.index, tuple)):
             tops_dict[func] = bottoms[0]

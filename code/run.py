@@ -50,9 +50,9 @@ ModelZoo = GenModelZoo()
 ModelDir = '../ModelFiles/'
 
 """  Set to caffe or ncnn  """
-dst = 'ncnn'
+dst = 'caffe'
 
-for i in range(0, 1):
+for i in range(2, 3):
     if i not in ModelZoo:
         continue
 
@@ -106,4 +106,4 @@ for i in range(0, 1):
 
     """  Test & Compare(optional)  """
     # from test import TestAndCompare
-    # TestAndCompare(i, pytorch_net, InputShape, 'Softmax_1', UseImage=True)
+    # TestAndCompare(i, pytorch_net, InputShape, 'Addmm_1', UseImage=False)
