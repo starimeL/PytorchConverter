@@ -77,6 +77,32 @@ def Slice(pytorch_layer):
     return layer
 
 
+def permute(pytorch_layer):
+    layer = LayerParameter_ncnn()
+    layer.type = 'Permute'
+    assert len(pytorch_layer.rev_dim_indices) == 4, len(pytorch_layer.rev_dim_indices)
+    assert pytorch_layer.rev_dim_indices[0] == 0, pytorch_layer.rev_dim_indices[0]
+
+    """ order_type details at src/layer/permute.cpp """
+    c, h, w = pytorch_layer.rev_dim_indices[1], pytorch_layer.rev_dim_indices[2], pytorch_layer.rev_dim_indices[3]
+    order_type = 0
+    if c == 1 and h == 2 and w == 3:
+        order_type = 0
+    elif c == 1 and h == 3 and w == 2:
+        order_type = 1
+    elif c == 2 and h == 1 and w == 3:
+        order_type = 2
+    elif c == 2 and h == 3 and w == 1:
+        order_type = 3
+    elif c == 3 and h == 1 and w == 2:
+        order_type = 4
+    elif c == 3 and h == 2 and w == 1:
+        order_type = 5
+
+    layer.param.append('%d' % order_type)
+    return layer
+
+
 def inner_product(pytorch_layer):
     layer = LayerParameter_ncnn()
     layer.type = 'InnerProduct'
@@ -344,6 +370,14 @@ def eltwise_max(pytorch_layer):
     return layer
 
 
+def negate(pytorch_layer):
+    layer = LayerParameter_ncnn()
+    layer.type = 'UnaryOp'
+    """ Operation_NEG=1, more op details at src/layer/unaryop.h """
+    layer.param.append('%d' % 1)
+    return layer
+
+
 def batchnorm(pytorch_layer):
     layer_bn = LayerParameter_ncnn()
     layer_bn.type = 'BatchNorm'
@@ -388,6 +422,7 @@ def build_converter(opts):
         'AvgPool2d': AvgPooling,
         'Add': eltwise,
         'Cmax': eltwise_max,
+        'Negate': negate,
         'BatchNorm': batchnorm,
         'Concat': concat,
         'Dropout': dropout,
@@ -400,6 +435,7 @@ def build_converter(opts):
         'LeakyReLU': leaky_ReLU,
         'PReLU': PReLU,
         'Index': Slice,
+        'Permute':permute,
     }
 
 
