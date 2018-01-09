@@ -91,6 +91,18 @@ def concat(pytorch_layer):
     return layer
 
 
+def flatten(pytorch_layer):
+    """ Only support flatten view """
+    total = 1
+    for dim in pytorch_layer.old_size:
+        total *= dim
+    assert ((pytorch_layer.new_sizes[1] == total) or (pytorch_layer.new_sizes[1] == -1))
+
+    layer = pb2.LayerParameter()
+    layer.type = "Flatten"
+    return layer
+
+
 def spatial_convolution(pytorch_layer):
     layer = pb2.LayerParameter()
     blobs_weight = pytorch_layer.next_functions[1][0].variable.data.numpy()
@@ -362,6 +374,7 @@ def build_converter(opts):
         'LeakyReLU': leaky_ReLU,
         'PReLU': PReLU,
         'Index': Slice,
+        'View': flatten,
     }
 
 

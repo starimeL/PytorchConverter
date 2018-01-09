@@ -66,7 +66,7 @@ def GetLayerParam_Index(func):
 def DFS(func):
     if func in visited:
         if dst == 'ncnn':
-            if len(split_tops[func]) != 0:
+            if (func in split_tops) and (len(split_tops[func]) != 0):
                 tops_dict[func] = split_tops[func][0]
                 split_tops[func].pop(0)
         return tops_dict[func]
@@ -106,14 +106,14 @@ def DFS(func):
 
     """  Skip some pytorch layers  """
     if dst == 'caffe':
-        if layer_type_name in ['View', 'Clone', 'Threshold', 'Dropout', 'SetItem']:
+        if layer_type_name in ['Clone', 'Threshold', 'Dropout', 'SetItem']:
             tops_dict[func] = bottoms[0]
         elif (layer_type_name == 'Index') and (not isinstance(func.index, tuple)):
             tops_dict[func] = bottoms[0]
         else:
             tops_dict[func] = name
     elif dst == 'ncnn':
-        if layer_type_name in ['View', 'Clone', 'SetItem']:
+        if layer_type_name in ['Clone', 'SetItem']:
             tops_dict[func] = bottoms[0]
         elif (layer_type_name == 'Index') and (not isinstance(func.index, tuple)):
             tops_dict[func] = bottoms[0]
@@ -153,7 +153,7 @@ def DFS(func):
                 layer = convert('', layer_type_name, func)
                 link(layer, bottoms[0] + '_slicer', bottoms, slice_tops[bottoms[0]])
 
-    elif layer_type_name not in ['View', 'Clone', 'SetItem']:
+    elif layer_type_name not in ['Clone', 'SetItem']:
             """ Debug """
             # if layer_type_name != 'Cmax':
             #     return tops_dict[func]
@@ -162,7 +162,7 @@ def DFS(func):
             link(layer, name, bottoms, [tops_dict[func]])
 
     if dst == 'ncnn':
-        if len(split_tops[func]) > 1:
+        if (func in split_tops) and (len(split_tops[func]) > 1):
             """ Gen split layer name """
             layer_type_name = 'splitncnn'
             if layer_type_name in layer_type_count:
@@ -210,7 +210,7 @@ def FindSplit_ncnn(func):
     name = layer_type_name + '_' + str(layer_type_count[layer_type_name])
 
     """  Skip some pytorch layers  """
-    if layer_type_name in ['View', 'Clone', 'SetItem']:
+    if layer_type_name in ['Clone', 'SetItem']:
         tops_dict[func] = bottoms[0]
     elif (layer_type_name == 'Index') and (not isinstance(func.index, tuple)):
         tops_dict[func] = bottoms[0]

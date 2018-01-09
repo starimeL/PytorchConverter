@@ -84,7 +84,7 @@ def permute(pytorch_layer):
     assert pytorch_layer.rev_dim_indices[0] == 0, pytorch_layer.rev_dim_indices[0]
 
     """ order_type details at src/layer/permute.cpp """
-    c, h, w = pytorch_layer.rev_dim_indices[1], pytorch_layer.rev_dim_indices[2], pytorch_layer.rev_dim_indices[3]
+    h, w, c = pytorch_layer.rev_dim_indices[1], pytorch_layer.rev_dim_indices[2], pytorch_layer.rev_dim_indices[3]
     order_type = 0
     if c == 1 and h == 2 and w == 3:
         order_type = 0
@@ -100,6 +100,18 @@ def permute(pytorch_layer):
         order_type = 5
 
     layer.param.append('%d' % order_type)
+    return layer
+
+
+def flatten(pytorch_layer):
+    """ Only support flatten view """
+    total = 1
+    for dim in pytorch_layer.old_size:
+        total *= dim
+    assert ((pytorch_layer.new_sizes[1] == total) or (pytorch_layer.new_sizes[1] == -1))
+
+    layer = LayerParameter_ncnn()
+    layer.type = "Flatten"
     return layer
 
 
@@ -422,7 +434,6 @@ def build_converter(opts):
         'AvgPool2d': AvgPooling,
         'Add': eltwise,
         'Cmax': eltwise_max,
-        'Negate': negate,
         'BatchNorm': batchnorm,
         'Concat': concat,
         'Dropout': dropout,
@@ -435,7 +446,9 @@ def build_converter(opts):
         'LeakyReLU': leaky_ReLU,
         'PReLU': PReLU,
         'Index': Slice,
-        'Permute':permute,
+        'Negate': negate,
+        'Permute': permute,
+        'View': flatten,
     }
 
 
