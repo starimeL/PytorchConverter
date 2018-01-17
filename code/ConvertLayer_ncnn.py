@@ -163,6 +163,7 @@ def spatial_convolution(pytorch_layer):
     dH = pytorch_layer.stride[0]
     dW = pytorch_layer.stride[1]
     dilation = pytorch_layer.dilation[0]
+    groups = pytorch_layer.groups
 
     if pytorch_layer.transposed:
         layer.type = 'Deconvolution'
@@ -194,6 +195,10 @@ def spatial_convolution(pytorch_layer):
         layer.param.append('%d' % blobs_weight.size)
         layer.weights.append(np.array([0.]))
         layer.weights.append(blobs_weight)
+
+    if groups != 1:
+        layer.param.append('%d' % groups)
+        layer.type += "DepthWise"
 
     return layer
 

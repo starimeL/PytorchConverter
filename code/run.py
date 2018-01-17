@@ -21,9 +21,17 @@ from ConvertModel import ConvertModel_ncnn
 os.sys.path.append('../ModelFiles/ResNet')
 import resnet
 
+"""  MobileNet  """
+os.sys.path.append('../ModelFiles/MobileNet')
+from MobileNet import MobileNet
+
 """  UNet  """
 os.sys.path.append('../ModelFiles/UNet')
 import UNet
+
+"""  FaceBoxes  """
+os.sys.path.append('../ModelFiles/FaceBoxes')
+from FaceBoxes import FaceBoxes
 
 """  Anime Gan  """
 os.sys.path.append('../ModelFiles/_netG_1')
@@ -36,8 +44,10 @@ def GenModelZoo():
         0: (torchvision.models.squeezenet1_1, [1, 3, 224, 224], [True], {}),
         1: (resnet.resnet50, [1, 3, 224, 224], [True], {}),
         2: (torchvision.models.densenet121, [1, 3, 224, 224], [False], {}),
+        3: (MobileNet, [1, 3, 224, 224], [], {}),
 
         17: (models._netG_1, [1, 100, 1, 1], [1, 100, 3, 64, 1], {}),
+        18: (FaceBoxes, [1, 3, 224, 224], [], {}),
         20: (UNet.UNet, [1, 3, 64, 64], [2], {}),
     }
 
@@ -50,9 +60,9 @@ ModelZoo = GenModelZoo()
 ModelDir = '../ModelFiles/'
 
 """  Set to caffe or ncnn  """
-dst = 'caffe'
+dst = 'ncnn'
 
-for i in range(2, 3):
+for i in range(18, 19):
     if i not in ModelZoo:
         continue
 
