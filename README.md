@@ -4,7 +4,9 @@ Pytorch model to Caffe &amp; [ncnn](https://github.com/Tencent/ncnn)
 ## Model Examples
   - SqueezeNet from torchvision
   - [ResNet50](https://drive.google.com/file/d/0B5B31rlbCRZfcS1rY3BtVWhDREk/view?usp=sharing) (with ceiling_mode=True)
+  - MobileNet
   - AnimeGAN pretrained model from author (https://github.com/jayleicn/animeGAN)
+  - SSD-like object detection net(for ncnn)
   - UNet (no pretrained model yet, just default initialization)
         
 ## Attentions
