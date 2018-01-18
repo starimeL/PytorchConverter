@@ -79,7 +79,8 @@ def TestAndCompare(ModelInd, pytorch_net, InputShape, LayerCheck='Softmax_1', Us
 
     if UseImage:
         img = '../TestData/2008_000536.jpg'
-        inputs = caffe.io.load_image(img)
+        # inputs = cv2.imread(img, 0)  # 0 for grayscale
+        inputs = cv2.imread(img, 1)  # 1 for color
     else:
         n, c, h, w = InputShape
         if (ModelInd == 17):
@@ -88,20 +89,23 @@ def TestAndCompare(ModelInd, pytorch_net, InputShape, LayerCheck='Softmax_1', Us
             inputs = np.random.normal(mu, sigma, w * h * c).reshape(w, h, c)
         else:
             # inputs = np.linspace(1, w * h * c, w * h * c).reshape(w, h, c)
-            inputs = 255 * np.random.rand(w, h, c)
+            inputs = np.random.rand(w, h, c)
 
     print(inputs.shape)
 
-    inputs = inputs * 255
-
+    scale_factor = 1.0 / 255.0
     if UseImage:
         transform_inputs = transforms.Compose([
+            transforms.ToPILImage(),
+            # transforms.CenterCrop(112),
             transforms.ToTensor(),
-            transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+            transforms.Normalize((0, 0, 0), (scale_factor, scale_factor, scale_factor)),
+            # transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
         ])
     else:
         transform_inputs = transforms.Compose([
             transforms.ToTensor(),
+            transforms.Normalize((0, 0, 0), (scale_factor, scale_factor, scale_factor)),
         ])
 
     print('Caffe Output:')
