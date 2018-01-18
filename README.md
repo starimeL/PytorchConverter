@@ -3,6 +3,7 @@ Pytorch model to Caffe &amp; [ncnn](https://github.com/Tencent/ncnn)
 
 ## Model Examples
   - SqueezeNet from torchvision
+  - DenseNet from torchvision
   - [ResNet50](https://drive.google.com/file/d/0B5B31rlbCRZfcS1rY3BtVWhDREk/view?usp=sharing) (with ceiling_mode=True)
   - MobileNet
   - AnimeGAN pretrained model from author (https://github.com/jayleicn/animeGAN)
