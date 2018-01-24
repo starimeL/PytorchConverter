@@ -52,27 +52,30 @@ def data(inputs):
 
 def Slice(pytorch_layer):
     layer = LayerParameter_ncnn()
-    if isinstance(pytorch_layer.index, tuple):
-        layer.type = 'Slice'
-        for axis, slice_param in enumerate(pytorch_layer.index):
-            if isinstance(slice_param, int):
-                start = slice_param
-                stop = slice_param + 1
-            else:
-                start = slice_param.start
-                stop = slice_param.stop
-                step = slice_param.step
-            if (start or stop or step) is not None:
-                break
+    layer.type = 'Slice'
 
-        num_slice = len(pytorch_layer.slice_point) + 1
-        layer.param.append('%d' % num_slice)
-        prev_offset = 0
-        for p in pytorch_layer.slice_point:
-            offset = p
-            layer.param.append('%d' % (offset - prev_offset))
-            prev_offset = offset
-        layer.param.append('%d' % -233)
+    # """ ncnn only support slicing on channel dimension """
+    # assert pytorch_layer.axis == 1
+
+    layer.param = {}
+    num_slice = len(pytorch_layer.slice_point) + 1
+    slice_param = ('%d' % num_slice)
+    prev_offset = 0
+    for p in pytorch_layer.slice_point:
+        offset = p
+        slice_param += (',%d' % (offset - prev_offset))
+        prev_offset = offset
+    slice_param += (',%d' % -233)
+
+    layer.param['-23300'] = slice_param
+    layer.param['1'] = ('%d' % (pytorch_layer.axis - 1))
+
+    return layer
+
+
+def Split(pytorch_layer):
+    layer = LayerParameter_ncnn()
+    layer.type = 'Split'
 
     return layer
 
@@ -372,7 +375,7 @@ def softmax(pytorch_layer):
 def eltwise(pytorch_layer):
     layer = LayerParameter_ncnn()
     layer.type = 'Eltwise'
-    """ operation: 0=mul 1=add  """
+    """ operation: 0=mul 1=add 2=max """
     layer.param.append('%d' % 1)
     """  TODO: coefficient  """
     return layer
@@ -381,7 +384,7 @@ def eltwise(pytorch_layer):
 def eltwise_max(pytorch_layer):
     layer = LayerParameter_ncnn()
     layer.type = 'Eltwise'
-    """ operation: 0=mul 1=add  """
+    """ operation: 0=mul 1=add 2=max """
     layer.param.append('%d' % 2)
     """  TODO: coefficient  """
     return layer
@@ -450,7 +453,8 @@ def build_converter(opts):
         'ELU': elu,
         'LeakyReLU': leaky_ReLU,
         'PReLU': PReLU,
-        'Index': Slice,
+        'Slice': Slice,
+        'MultiCopy': Split,
         'Negate': negate,
         'Permute': permute,
         'View': flatten,

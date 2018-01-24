@@ -9,7 +9,6 @@ of patent rights can be found in the PATENTS file in the same directory.
 
 import torch
 from torch.autograd import Variable
-from ConvertLayer_ncnn import LayerParameter_ncnn
 
 
 def link_caffe(layer, name, bottom, top):
@@ -25,8 +24,14 @@ def link_caffe(layer, name, bottom, top):
 def link_ncnn(layer, name, bottom, top):
     layer_type = layer.type
     layer_param = layer.param
-    for ind, param in enumerate(layer_param):
-        layer_param[ind] = str(ind) + '=' + param
+    if isinstance(layer_param, list):
+        for ind, param in enumerate(layer_param):
+            layer_param[ind] = str(ind) + '=' + param
+    elif isinstance(layer_param, dict):
+        param_dict = layer_param
+        layer_param = []
+        for key, param in param_dict.iteritems():
+            layer_param.append(key + '=' + param)
 
     pp = []
     pp.append('%-16s' % layer_type)
@@ -60,21 +65,18 @@ def GetLayerParam_Index(func):
             break
     shape = func.input_size
     dim_size = shape[axis]
-    return start, stop, dim_size
+    return start, stop, dim_size, axis
 
 
 def DFS(func):
     if func in visited:
-        if dst == 'ncnn':
-            if (func in split_tops) and (len(split_tops[func]) != 0):
-                tops_dict[func] = split_tops[func][0]
-                split_tops[func].pop(0)
         return tops_dict[func]
 
     visited.add(func)
     layer_type = str(type(func).__name__)
     bottoms = []
 
+    father_func = None
     if hasattr(func, 'next_functions'):
         for u in func.next_functions:
             if u[0] is not None:
@@ -82,6 +84,7 @@ def DFS(func):
                 if child_type != 'AccumulateGrad' and (layer_type != 'AddmmBackward' or child_type != 'TransposeBackward'):
                     child_name = DFS(u[0])
                     bottoms.append(child_name)
+                    father_func = u[0]
 
     """ Gen layer name """
     layer_type_name = layer_type.replace('Backward', '')
@@ -112,6 +115,9 @@ def DFS(func):
             tops_dict[func] = bottoms[0]
         else:
             tops_dict[func] = name
+            if layer_type_name == 'Index':
+                """ Change layer name only for 'Slice' """
+                tops_dict[func] = tops_dict[father_func] + '_' + tops_dict[func]
     elif dst == 'ncnn':
         if layer_type_name in ['Clone', 'SetItem']:
             tops_dict[func] = bottoms[0]
@@ -119,6 +125,20 @@ def DFS(func):
             tops_dict[func] = bottoms[0]
         else:
             tops_dict[func] = name
+            if layer_type_name == 'Index':
+                """ Chane layer name for 'Slice' """
+                tops_dict[func] = tops_dict[father_func] + '_' + tops_dict[func]
+            elif hasattr(func, 'next_functions'):
+                """ Change bottom layers name for other multi top layers cases """
+                for u in func.next_functions:
+                    if u[0] is not None:
+                        child_type = str(type(u[0]).__name__)
+                        if child_type != 'AccumulateGrad' and (layer_type != 'AddmmBackward' or child_type != 'TransposeBackward'):
+                            father_func = u[0]
+                            if (father_func in multi_tops) and (len(multi_tops[father_func]) > 1):
+                                for i in range(len(bottoms)):
+                                    if bottoms[i] == tops_dict[father_func]:
+                                        bottoms[i] = tops_dict[father_func] + '_' + tops_dict[func]
 
     """ Split to BatchNorm and Scale """
     if layer_type_name == 'BatchNorm':
@@ -132,28 +152,7 @@ def DFS(func):
             link(layer_double[1], scale_name, [tops_dict[func]], [scale_name])
             tops_dict[func] = scale_name
 
-    elif layer_type_name == 'Index':
-        if not isinstance(func.index, tuple):
-            return tops_dict[func]
-
-        tops_dict[func] = bottoms[0] + '_' + tops_dict[func]
-        if bottoms[0] not in slice_point:
-            slice_point[bottoms[0]] = []
-            slice_tops[bottoms[0]] = []
-        slice_tops[bottoms[0]].append(tops_dict[func])
-
-        start, stop, dim_size = GetLayerParam_Index(func)
-
-        """ Persume the visit of Index layers will be ascending """
-        if start > 0:
-            slice_point[bottoms[0]].append(start)
-            """ Last slice """
-            if stop == dim_size:
-                func.slice_point = slice_point[bottoms[0]]
-                layer = convert('', layer_type_name, func)
-                link(layer, bottoms[0] + '_slicer', bottoms, slice_tops[bottoms[0]])
-
-    elif layer_type_name not in ['Clone', 'SetItem']:
+    elif layer_type_name not in ['Index', 'Clone', 'SetItem']:
             """ Debug """
             # if layer_type_name != 'Cmax':
             #     return tops_dict[func]
@@ -161,30 +160,32 @@ def DFS(func):
             layer = convert('', layer_type_name, func)
             link(layer, name, bottoms, [tops_dict[func]])
 
-    if dst == 'ncnn':
-        if (func in split_tops) and (len(split_tops[func]) > 1):
-            """ Gen split layer name """
-            layer_type_name = 'splitncnn'
-            if layer_type_name in layer_type_count:
-                layer_type_count[layer_type_name] += 1
-            else:
-                layer_type_count[layer_type_name] = 1
-
-            name = layer_type_name + '_' + str(layer_type_count[layer_type_name])
-            layer_split = LayerParameter_ncnn()
-            layer_split.type = 'Split'
-            layer_split.param = []
-            link(layer_split, name, [tops_dict[func]], split_tops[func])
-
-            tops_dict[func] = split_tops[func][0]
-            split_tops[func].pop(0)
-        else:
-            split_tops[func] = []
+    """ If func layer has multiple top layers """
+    if (func in multi_tops) and (len(multi_tops[func]) > 1):
+        if func in slice_point:
+            """ Make an extra dummy layer type 'Slice' after func layer, which not exist in pytorch """
+            slice_func = torch.autograd.function
+            slice_func.axis = axis_dict[func]
+            slice_func.slice_point = slice_point[func]
+            slice_layer = convert('', 'Slice', slice_func)
+            link(slice_layer, tops_dict[func] + '_slicer', [tops_dict[func]], multi_tops[func])
+        elif dst == 'ncnn':
+            """
+            Make 'Split' copy for each top layer respectively
+            (only in ncnn, caffe will automatically handle this case)
+            """
+            copy_func = torch.autograd.function
+            split_layer = convert('', 'MultiCopy', copy_func)
+            link(split_layer, tops_dict[func] + '_copyer', [tops_dict[func]], multi_tops[func])
 
     return tops_dict[func]
 
 
-def FindSplit_ncnn(func):
+def FindMultiTops(func):
+    """
+        Precount nodes with number of tops(indegree)>1,
+        which could be Slice or Split(only in ncnn, for making multiple copies)
+    """
     if func in visited:
         return tops_dict[func]
 
@@ -197,7 +198,7 @@ def FindSplit_ncnn(func):
             if u[0] is not None:
                 child_type = str(type(u[0]).__name__)
                 if child_type != 'AccumulateGrad' and (layer_type != 'AddmmBackward' or child_type != 'TransposeBackward'):
-                    child_name = FindSplit_ncnn(u[0])
+                    child_name = FindMultiTops(u[0])
                     bottoms.append(child_name)
 
     """ Gen layer name """
@@ -210,22 +211,45 @@ def FindSplit_ncnn(func):
     name = layer_type_name + '_' + str(layer_type_count[layer_type_name])
 
     """  Skip some pytorch layers  """
-    if layer_type_name in ['Clone', 'SetItem']:
-        tops_dict[func] = bottoms[0]
-    elif (layer_type_name == 'Index') and (not isinstance(func.index, tuple)):
-        tops_dict[func] = bottoms[0]
-    else:
-        tops_dict[func] = name
+    if dst == 'caffe':
+        if layer_type_name in ['Clone', 'Threshold', 'Dropout', 'SetItem']:
+            tops_dict[func] = bottoms[0]
+        elif (layer_type_name == 'Index') and (not isinstance(func.index, tuple)):
+            tops_dict[func] = bottoms[0]
+        else:
+            tops_dict[func] = name
+    elif dst == 'ncnn':
+        if layer_type_name in ['Clone', 'SetItem']:
+            tops_dict[func] = bottoms[0]
+        elif (layer_type_name == 'Index') and (not isinstance(func.index, tuple)):
+            tops_dict[func] = bottoms[0]
+        elif layer_type_name == 'BatchNorm':
+            tops_dict[func] = name + '_' + 'scale'
+        else:
+            tops_dict[func] = name
 
     if hasattr(func, 'next_functions'):
         for u in func.next_functions:
             if u[0] is not None:
                 child_type = str(type(u[0]).__name__)
                 if child_type != 'AccumulateGrad' and (layer_type != 'AddmmBackward' or child_type != 'TransposeBackward'):
-                    if u[0] in split_tops:
-                        split_tops[u[0]].append('splitncnn_' + tops_dict[func])
-                    else:
-                        split_tops[u[0]] = ['splitncnn_' + tops_dict[func]]
+                    father_func = u[0]
+                    if father_func not in multi_tops:
+                        multi_tops[father_func] = []
+                    multi_tops[father_func].append(tops_dict[father_func] + '_' + tops_dict[func])
+
+                    if (layer_type == 'IndexBackward') and isinstance(func.index, tuple):
+                        if father_func not in slice_point:
+                            slice_point[father_func] = []
+                        start, stop, dim_size, axis = GetLayerParam_Index(func)
+
+                        """ Persume the visit of Index layers will be ascending """
+                        if start > 0:
+                            slice_point[father_func].append(start)
+                            axis_dict[father_func] = axis
+
+                            """ Last slice """
+                            # if stop == dim_size
 
     return tops_dict[func]
 
@@ -246,33 +270,35 @@ def ConvertModel_ncnn(pytorch_net, InputShape, softmax=False):
         regularize = nn.Softmax()
         outputs = regularize(outputs)
 
-    global ncnn_net, ncnn_weights, visited, tops_dict, layer_type_count, blob_set, dst
-    global slice_point, slice_tops
-    global split_tops
-
     """ Travel computational graph in backward order """
     """ Need to count number of tops(indegree) of all nodes first"""
+    global visited, tops_dict, layer_type_count, dst
+    global multi_tops, slice_point, axis_dict
+
     visited = set()
     tops_dict = dict()
     layer_type_count = dict()
-    split_tops = dict()
-    for out in outputs:
-        FindSplit_ncnn(out.grad_fn)
-
-    ncnn_net = []
-    ncnn_weights = []
+    multi_tops = dict()
+    slice_point = dict()
+    axis_dict = dict()
     dst = 'ncnn'
 
+    for out in outputs:
+        FindMultiTops(out.grad_fn)
+
     """ Travel computational graph in backward order """
+    global ncnn_net, ncnn_weights, blob_set
     global convert, link
+    ncnn_net = []
+    ncnn_weights = []
     convert = convert_ncnn
     link = link_ncnn
+
     visited = set()
     tops_dict = dict()
     layer_type_count = dict()
     blob_set = set()
-    slice_point = dict()
-    slice_tops = dict()
+
     for out in outputs:
         DFS(out.grad_fn)
 
@@ -304,22 +330,33 @@ def ConvertModel_caffe(pytorch_net, InputShape, softmax=False):
         outputs = regularize(outputs)
 
     """ Travel computational graph in backward order """
-    global caffe_net, visited, tops_dict, layer_type_count, dst
-    global slice_point, slice_tops
-    global convert, link
-    convert = convert_caffe
-    link = link_caffe
-    caffe_net = []
-    dst = 'caffe'
-
+    """ Need to count number of tops(indegree) of all nodes first """
+    global visited, tops_dict, layer_type_count, dst
+    global slice_point, multi_tops, axis_dict
     visited = set()
     tops_dict = dict()
     layer_type_count = dict()
     slice_point = dict()
-    slice_tops = dict()
+    multi_tops = dict()
+    axis_dict = dict()
+    dst = 'caffe'
+
+    for out in outputs:
+        FindMultiTops(out.grad_fn)
+
+    """ Travel computational graph in backward order """
+    global caffe_net
+    global convert, link
+    convert = convert_caffe
+    link = link_caffe
+    caffe_net = []
+
+    visited = set()
+    tops_dict = dict()
+    layer_type_count = dict()
+
     for out in outputs:
         DFS(out.grad_fn)
-
 
     """ Caffe input """
     text_net = pb2.NetParameter()

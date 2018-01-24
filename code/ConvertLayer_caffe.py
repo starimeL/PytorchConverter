@@ -47,21 +47,10 @@ def data(inputs):
 
 def Slice(pytorch_layer):
     layer = pb2.LayerParameter()
-    if isinstance(pytorch_layer.index, tuple):
-        layer.type = "Slice"
-        for axis, slice_param in enumerate(pytorch_layer.index):
-            if isinstance(slice_param, int):
-                start = slice_param
-                stop = slice_param + 1
-            else:
-                start = slice_param.start
-                stop = slice_param.stop
-                step = slice_param.step
-            if (start or stop or step) is not None:
-                break
+    layer.type = "Slice"
 
-        layer.slice_param.axis = int(axis)
-        layer.slice_param.slice_point.extend(pytorch_layer.slice_point)
+    layer.slice_param.axis = pytorch_layer.axis
+    layer.slice_param.slice_point.extend(pytorch_layer.slice_point)
     return layer
 
 
@@ -373,7 +362,7 @@ def build_converter(opts):
         'ELU': elu,
         'LeakyReLU': leaky_ReLU,
         'PReLU': PReLU,
-        'Index': Slice,
+        'Slice': Slice,
         'View': flatten,
     }
 
