@@ -358,6 +358,7 @@ def build_converter(opts):
         'MulConstant': MulConst,
         'AddConstant': AddConst,
         'Softmax': softmax,
+        'Sigmoid': ty('Sigmoid'),
         'Tanh': ty('TanH'),
         'ELU': elu,
         'LeakyReLU': leaky_ReLU,
