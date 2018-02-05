@@ -145,10 +145,10 @@ def inner_product(pytorch_layer):
 def concat(pytorch_layer):
     layer = LayerParameter_ncnn()
     axis = int(pytorch_layer.dim)
+    layer.type = 'Concat'
     if (axis == 1):
-        layer.type = 'Concat'
+        pass
     else:
-        layer.type = 'ConcatV2'
         dim = axis - 1 if axis >= 1 else 0
         layer.param.append('%d' % dim)
     return layer
@@ -302,10 +302,10 @@ def AvgPooling(pytorch_layer):
 def dropout(pytorch_layer):
     layer = LayerParameter_ncnn()
     dropout_ratio = float(pytorch_layer.p)
+    layer.type = 'Dropout'
     if abs(dropout_ratio - 0.5) < 1e-3:
-        layer.type = 'Dropout'
+        pass
     else:
-        layer.type = 'DropoutV2'
         scale = 1.0 - dropout_ratio
         layer.param.append('%f' % scale)
     return layer
