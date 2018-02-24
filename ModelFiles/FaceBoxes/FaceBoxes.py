@@ -33,7 +33,7 @@ class Inception(nn.Module):
 
         self.conv1 = BasicConv2d(in_planes, n1x1down, kernel_size=1)
 
-        self.pool2_1 = nn.MaxPool2d(3, stride=1, padding=1)
+        self.pool2_1 = nn.MaxPool2d(3, stride=1, padding=1, ceil_mode=True)
         self.conv2_2 = BasicConv2d(in_planes, n1x1down, kernel_size=1)
 
         self.conv3_1 = BasicConv2d(in_planes, n1x1up, kernel_size=1)
