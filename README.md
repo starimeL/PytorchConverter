@@ -15,8 +15,8 @@ Pytorch model to Caffe &amp; [ncnn](https://github.com/Tencent/ncnn)
     - You can convert Pytorch models with all pooling layer's ceil_mode=True.
     - Or compile a custom version of Caffe/ncnn with floor() replaced by ceil() in pooling layer inference.
 
-  - **Python Error: AttributeError: grad_fn**
-    - Update your version to pytorch-0.2.0 and torchvision-0.1.9 at least.
+  - **Python Errors: Use Pytorch 0.2.0 Only to Convert Your Model**
+    - Higher version of pytorch 0.3.0, 0.3.1, 0.4.0 seemingly have blocked third party model conversion.
 
   - **Other Python packages requirements:**
     - to Caffe: numpy, protobuf (to gen caffe proto)
