@@ -14,6 +14,8 @@ import torchvision
 from ConvertModel import ConvertModel_caffe
 from ConvertModel import ConvertModel_ncnn
 
+from ReplaceDenormals import ReplaceDenormals
+
 
 """ Import your net structure here """
 
@@ -81,6 +83,9 @@ for i in range(18, 19):
             os.makedirs(ModelDir + NetName)
         print 'Saving default weight initialization...'
         torch.save(pytorch_net.state_dict(), ModelDir + NetName + '/' + NetName + '.pth')
+
+    """ Replace denormal weight values(<1e-30), otherwise may increase forward time cost """
+    ReplaceDenormals(pytorch_net)
 
     """  Connnnnnnnvert!  """
     print('Converting...')
