@@ -17,6 +17,7 @@ Pytorch model to Caffe &amp; [ncnn](https://github.com/Tencent/ncnn)
 
   - **Python Errors: Use Pytorch 0.2.0 Only to Convert Your Model**
     - Higher version of pytorch 0.3.0, 0.3.1, 0.4.0 seemingly have blocked third party model conversion.
+    - Please note that you can still TRAIN your model on pytorch 0.3.0~0.4.0. The converter running on 0.2.0 could still load higher version models correctly.
 
   - **Other Python packages requirements:**
     - to Caffe: numpy, protobuf (to gen caffe proto)
